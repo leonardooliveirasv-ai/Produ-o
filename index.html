@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apontamento de Produção</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f5f3;
+    --bg3: #ededea;
+    --text: #1a1a18;
+    --text2: #5f5e5a;
+    --text3: #888780;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.22);
+    --radius: 10px;
+    --radius-sm: 7px;
+    --green-bg: #EAF3DE; --green-text: #27500A; --green-border: #639922;
+    --amber-bg: #FAEEDA; --amber-text: #633806; --amber-border: #EF9F27;
+    --red-bg: #FCEBEB;   --red-text: #A32D2D;   --red-border: #E24B4A;
+    --blue-bg: #E6F1FB;  --blue-text: #0C447C;  --blue-border: #185FA5;
+    --purple-bg: #EEEDFE;--purple-text: #3C3489;--purple-border: #7F77DD;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c; --bg2: #2a2a27; --bg3: #333330;
+      --text: #f0ede8; --text2: #b4b2a9; --text3: #888780;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+      --green-bg:#173404;--green-text:#C0DD97;--green-border:#3B6D11;
+      --amber-bg:#412402;--amber-text:#FAC775;--amber-border:#854F0B;
+      --red-bg:#501313;  --red-text:#F7C1C1; --red-border:#A32D2D;
+      --blue-bg:#042C53; --blue-text:#B5D4F4;--blue-border:#185FA5;
+      --purple-bg:#26215C;--purple-text:#CECBF6;--purple-border:#534AB7;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; padding: 1.5rem 1rem; }
+  .container { max-width: 640px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
+  .logo { width: 36px; height: 36px; background: var(--text); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
+  .logo svg { width: 20px; height: 20px; fill: var(--bg); }
+  header h1 { font-size: 17px; font-weight: 600; color: var(--text); }
+  header p { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+  .step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--text); color: var(--bg); font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-num.done { background: var(--green-border); }
+  .step-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 500; }
+  select, input[type=number], input[type=date], textarea {
+    width: 100%; padding: 9px 12px; font-size: 14px; border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm); background: var(--bg); color: var(--text);
+    outline: none; font-family: inherit;
+  }
+  select:focus, input:focus, textarea:focus { border-color: var(--blue-border); box-shadow: 0 0 0 3px rgba(24,95,165,0.15); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .meta-box { background: var(--bg2); border-radius: var(--radius-sm); padding: 1rem; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+  .meta-val { font-size: 20px; font-weight: 600; color: var(--text); }
+  .meta-lbl { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .badge-green  { background: var(--green-bg);  color: var(--green-text); }
+  .badge-purple { background: var(--purple-bg); color: var(--purple-text); }
+  .badge-amber  { background: var(--amber-bg);  color: var(--amber-text); }
+  .alert { border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 12px; font-size: 13px; display: none; }
+  .alert-warn   { background: var(--amber-bg);  color: var(--amber-text);  border: 0.5px solid var(--amber-border); }
+  .alert-danger { background: var(--red-bg);    color: var(--red-text);    border: 0.5px solid var(--red-border); }
+  .alert-skip   { background: var(--purple-bg); color: var(--purple-text); border: 0.5px solid var(--purple-border); }
+  .alert-success{ background: var(--green-bg);  color: var(--green-text);  border: 0.5px solid var(--green-border); }
+  .alert-info   { background: var(--blue-bg);   color: var(--blue-text);   border: 0.5px solid var(--blue-border); }
+  .order-card { border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .order-card:hover { border-color: var(--border2); background: var(--bg2); }
+  .order-card.selected { border: 2px solid var(--blue-border); background: var(--blue-bg); }
+  .op-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .op-sub   { font-size: 12px; color: var(--text2); margin-top: 3px; }
+  .op-meta  { font-size: 12px; color: var(--text3); margin-top: 4px; }
+  .op-row   { display: flex; justify-content: space-between; align-items: flex-start; }
+  .prog-wrap { height: 5px; background: var(--bg3); border-radius: 3px; margin-top: 6px; }
+  .prog-fill { height: 5px; border-radius: 3px; transition: width 0.3s; }
+  .input-prog-wrap { margin-bottom: 14px; }
+  .input-prog-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--text3); margin-bottom: 4px; }
+  .motivo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .motivo-btn { border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; cursor: pointer; background: var(--bg); color: var(--text); text-align: left; font-family: inherit; transition: border-color 0.1s, background 0.1s; }
+  .motivo-btn:hover { background: var(--bg2); }
+  .motivo-btn.active { border: 1.5px solid var(--blue-border); background: var(--blue-bg); color: var(--blue-text); font-weight: 600; }
+  .confirm-box { background: var(--bg2); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1rem; display: none; }
+  .confirm-title { font-size: 12px; font-weight: 600; color: var(--text3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .confirm-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+  .confirm-row:last-child { border-bottom: none; }
+  .confirm-label { color: var(--text2); }
+  .confirm-val { font-weight: 600; color: var(--text); text-align: right; max-width: 60%; }
+  .btn { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; transition: opacity 0.15s, transform 0.1s; }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--text); color: var(--bg); border: none; }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+  .btn-secondary { background: transparent; color: var(--text); border: 0.5px solid var(--border2); }
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  .hidden { display: none; }
+  .upload-area { border: 1.5px dashed var(--border2); border-radius: var(--radius-sm); padding: 1.5rem; text-align: center; cursor: pointer; margin-bottom: 14px; transition: background 0.15s; }
+  .upload-area:hover { background: var(--bg2); }
+  .upload-icon { font-size: 28px; margin-bottom: 8px; }
+  .upload-text { font-size: 13px; color: var(--text2); }
+  .upload-sub  { font-size: 12px; color: var(--text3); margin-top: 4px; }
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 1rem 0; }
+  .records-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .records-table th { text-align: left; color: var(--text3); font-weight: 600; padding: 6px 8px; border-bottom: 0.5px solid var(--border); }
+  .records-table td { padding: 7px 8px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+  .records-table tr:last-child td { border-bottom: none; }
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 1rem; background: var(--bg2); border-radius: var(--radius-sm); padding: 3px; }
+  .tab { flex: 1; padding: 7px; text-align: center; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 6px; color: var(--text2); border: none; background: transparent; font-family: inherit; }
+  .tab.active { background: var(--bg); color: var(--text); font-weight: 600; box-shadow: 0 0.5px 3px rgba(0,0,0,0.08); }
+  .success-icon { font-size: 48px; margin-bottom: 12px; }
+  .records-count { font-size: 12px; color: var(--text3); margin-bottom: 8px; }
+  .export-btn { font-size: 12px; color: var(--blue-text); background: var(--blue-bg); border: 0.5px solid var(--blue-border); border-radius: var(--radius-sm); padding: 5px 12px; cursor: pointer; font-family: inherit; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 3h18v4H3zM3 10h11v4H3zM3 17h8v4H3zM16 13l5 5-5 5v-3h-4v-4h4z"/></svg>
+    </div>
+    <div>
+      <h1>Apontamento de Produção</h1>
+      <p>Registro de progresso por turno</p>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab active" onclick="showTab('form')">Apontamento</button>
+    <button class="tab" onclick="showTab('registros')">Registros do dia</button>
+  </div>
+
+  <!-- TAB FORM -->
+  <div id="tab-form">
+
+    <!-- STEP 0: Upload -->
+    <div id="step0">
+      <div class="card">
+        <div class="step-header"><div class="step-num">1</div><div class="step-title">Carregar base de ordens</div></div>
+        <div class="upload-area" onclick="document.getElementById('file-input').click()">
+          <div class="upload-icon">📂</div>
+          <div class="upload-text">Clique para selecionar o arquivo</div>
+          <div class="upload-sub">Excel (.xlsx) ou CSV — colunas: op, linha, modelo, lote, acumulado, planejado</div>
+        </div>
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleArquivo(this)">
+        <div id="csv-error" class="alert alert-danger"></div>
+        <hr class="divider">
+        <button class="btn btn-secondary" onclick="usarDemo()">Usar dados de exemplo para testar</button>
+      </div>
+    </div>
+
+    <!-- STEP 1: Identificação -->
+    <div id="step1" class="hidden">
+      <div class="card">
+        <div class="step-header"><div class="step-num done">✓</div><div class="step-title">Base carregada</div></div>
+        <div class="grid3">
+          <div class="field"><label>Data</label><input type="date" id="data" onchange="checkStep1()"></div>
+          <div class="field"><label>Turno</label>
+            <select id="turno" onchange="checkStep1()">
+              <option value="">Selecione</option>
+              <option>Dia</option>
+              <option>Noite</option>
+            </select>
+          </div>
+          <div class="field"><label>Linha</label>
+            <select id="linha" onchange="onLinhaChange()">
+              <option value="">Selecione</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Ordens -->
+      <div id="step2" class="hidden">
+        <div class="card">
+          <div class="step-header"><div class="step-num" id="sn2">2</div><div class="step-title">Selecionar ordem produzida</div></div>
+          <div id="alert-skip" class="alert alert-skip"></div>
+          <div id="orders-list"></div>
+        </div>
+
+        <!-- STEP 3: Quantidade -->
+        <div id="step3" class="hidden">
+          <div class="card">
+            <div class="step-header"><div class="step-num" id="sn3">3</div><div class="step-title">Informar produção do turno</div></div>
+            <div class="meta-box" id="meta-box"></div>
+            <div class="field">
+              <label>Qtd. produzida neste turno</label>
+              <input type="number" id="qtd" min="0" placeholder="0" oninput="onQtdChange()">
+            </div>
+            <div id="input-prog-wrap" class="input-prog-wrap hidden">
+              <div class="input-prog-header">
+                <span>Progresso acumulado após este turno</span>
+                <span id="pct-label">0%</span>
+              </div>
+              <div class="prog-wrap"><div class="prog-fill" id="prog-bar" style="width:0%"></div></div>
+            </div>
+            <div id="alert-desvio" class="alert"></div>
+            <div id="motivos-wrap" class="hidden">
+              <label>Motivo do desvio <span style="color:var(--red-text)">*</span></label>
+              <div class="motivo-grid" id="motivo-grid"></div>
+              <div id="outro-wrap" class="hidden" style="margin-top:8px">
+                <textarea id="outro-texto" rows="2" placeholder="Descreva o motivo..." oninput="checkSubmit()"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="confirm-box" id="confirm-box"></div>
+
+          <div class="btn-grid">
+            <button class="btn btn-secondary" onclick="resetOrdem()">Voltar</button>
+            <button class="btn btn-primary" id="btn-submit" disabled onclick="submitForm()">Confirmar apontamento</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUCESSO -->
+    <div id="step-ok" class="hidden">
+      <div class="card" style="text-align:center; padding:2rem 1.25rem">
+        <div class="success-icon">✅</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text)">Apontamento registrado!</div>
+        <div id="ok-summary" style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5"></div>
+        <button class="btn btn-primary" style="margin-top:1.5rem;width:auto;padding:11px 32px" onclick="novoApontamento()">Novo apontamento</button>
+      </div>
+    </div>
+
+  </div><!-- /tab-form -->
+
+  <!-- TAB REGISTROS -->
+  <div id="tab-registros" class="hidden">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="step-title">Registros do dia</div>
+        <button class="export-btn" onclick="exportCSV()">⬇ Exportar CSV</button>
+      </div>
+      <div id="records-count" class="records-count">Nenhum registro ainda.</div>
+      <div id="records-container"></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+const MOTIVOS_ABAIXO = ['Falta de material','Problema de máquina','Parada de qualidade','Falta de operador','Setup prolongado','Outro'];
+const MOTIVOS_ACIMA  = ['Hora extra não planejada','Retrabalho de lote anterior','Modelo mais simples','Outro'];
+const MOTIVOS_PULO   = ['Falta de material','Setup não concluído','Problema de qualidade na OP anterior','Instrução do PCP','Outro'];
+const META_TURNO = 1200;
+
+let ordens = [];
+let selectedOrder = null;
+let selectedMotivo = null;
+let registros = [];
+
+/* ---- TABS ---- */
+function showTab(t) {
+  document.getElementById('tab-form').classList.toggle('hidden', t !== 'form');
+  document.getElementById('tab-registros').classList.toggle('hidden', t !== 'registros');
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', (i===0 && t==='form') || (i===1 && t==='registros')));
+  if (t === 'registros') renderRegistros();
+}
+
+/* ---- CSV ---- */
+function handleArquivo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+
+  reader.onload = e => {
+    try {
+      let rows = [];
+      if (ext === 'xlsx' || ext === 'xls') {
+        const data = new Uint8Array(e.target.result);
+        const wb2 = XLSX.read(data, {type:'array'});
+        const ws = wb2.Sheets[wb2.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        // normaliza chaves para minúsculo
+        rows = rows.map(r => { const n={}; Object.keys(r).forEach(k=>n[k.toLowerCase().trim()]=r[k]); return n; });
+      } else {
+        // CSV — detecta separador automaticamente
+        const text = e.target.result.trim();
+        const firstLine = text.split('\n')[0];
+        const sep = firstLine.includes(';') ? ';' : ',';
+        const lines = text.split('\n');
+        const headers = lines[0].split(sep).map(h=>h.trim().toLowerCase().replace(/"/g,''));
+        rows = lines.slice(1).filter(l=>l.trim()).map(line => {
+          const cols = line.split(sep).map(c=>c.trim().replace(/"/g,''));
+          const obj = {}; headers.forEach((h,i)=>obj[h]=cols[i]||''); return obj;
+        });
+      }
+
+      const req = ['op','linha','modelo','lote','acumulado','planejado'];
+      const keys = Object.keys(rows[0]||{});
+      const missing = req.filter(r => !keys.includes(r));
+      if (missing.length) { showError('Colunas faltando: ' + missing.join(', ')); return; }
+
+      ordens = rows.filter(o=>o.op && o.linha).map(obj => ({
+        op: String(obj.op), linha: String(obj.linha), modelo: String(obj.modelo),
+        lote: parseInt(obj.lote)||0, acumulado: parseInt(obj.acumulado)||0,
+        planejado: String(obj.planejado), seq: parseInt(obj.seq)||0, _pulo: false
+      }));
+      ordens.forEach(o => { const same = ordens.filter(x=>x.linha===o.linha); o.seq = same.indexOf(o); });
+      setupLinhas();
+      document.getElementById('csv-error').style.display = 'none';
+      activateStep1();
+    } catch(err) { showError('Erro ao ler o arquivo: ' + err.message); }
+  };
+
+  if (ext === 'xlsx' || ext === 'xls') reader.readAsArrayBuffer(file);
+  else reader.readAsText(file, 'UTF-8');
+}
+
+function showError(msg) {
+  const el = document.getElementById('csv-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function usarDemo() {
+  ordens = [
+    {op:'OP-00231',linha:'S1',modelo:'MV263002WE SA|100-240V|12VDC/1A',  lote:17000,acumulado:7744, planejado:'05/06/2026',seq:0,_pulo:false},
+    {op:'OP-00232',linha:'S1',modelo:'MV263003WE SA|100-240V|12VDC/1A',  lote:17000,acumulado:0,    planejado:'07/06/2026',seq:1,_pulo:false},
+    {op:'OP-00233',linha:'S1',modelo:'MV263025WE SA|100-240V|12VDC/1.5A',lote:15000,acumulado:3842, planejado:'09/06/2026',seq:2,_pulo:false},
+    {op:'OP-00234',linha:'S2',modelo:'MV263036WE SA|100-240V|12VDC/1.5A',lote:7500, acumulado:4692, planejado:'08/06/2026',seq:0,_pulo:false},
+    {op:'OP-00235',linha:'S2',modelo:'MV263037WE SA|100-240V|12VDC/1.5A',lote:7500, acumulado:0,    planejado:'10/06/2026',seq:1,_pulo:false},
+    {op:'OP-00236',linha:'S3',modelo:'MV263017WE SA|100-240V|12VDC/1A',  lote:10000,acumulado:6190, planejado:'09/06/2026',seq:0,_pulo:false},
+    {op:'OP-00237',linha:'S3',modelo:'MV263018WE SA|100-240V|12VDC/1A',  lote:10000,acumulado:0,    planejado:'11/06/2026',seq:1,_pulo:false},
+    {op:'OP-00238',linha:'S4',modelo:'MV25C028WE SA|100-240V|9VDC/0.6A', lote:11000,acumulado:11000,planejado:'27/05/2026',seq:0,_pulo:false},
+    {op:'OP-00239',linha:'S4',modelo:'MV25C033WE SA|100-240V|6.6A',      lote:11000,acumulado:5000, planejado:'02/06/2026',seq:1,_pulo:false},
+    {op:'OP-00240',linha:'S5',modelo:'MV263021WE SA|100-240V|12VDC/1.5A',lote:10000,acumulado:3230, planejado:'11/06/2026',seq:0,_pulo:false},
+    {op:'OP-00241',linha:'S6',modelo:'MV263003WE SA|100-240V|12VDC/1A',  lote:17000,acumulado:12148,planejado:'03/06/2026',seq:0,_pulo:false},
+  ];
+  setupLinhas();
+  activateStep1();
+}
+
+function activateStep1() {
+  document.getElementById('step0').classList.add('hidden');
+  document.getElementById('step1').classList.remove('hidden');
+  document.getElementById('data').valueAsDate = new Date();
+}
+
+function setupLinhas() {
+  const linhas = [...new Set(ordens.map(o=>o.linha))].sort();
+  const sel = document.getElementById('linha');
+  sel.innerHTML = '<option value="">Selecione</option>';
+  linhas.forEach(l => { const o = document.createElement('option'); o.value=l; o.textContent=l; sel.appendChild(o); });
+}
+
+/* ---- STEP 1 ---- */
+function checkStep1() {
+  const d = document.getElementById('data').value;
+  const t = document.getElementById('turno').value;
+  const l = document.getElementById('linha').value;
+  if (d && t && l) renderOrdens(l);
+}
+
+function onLinhaChange() {
+  document.getElementById('step2').classList.add('hidden');
+  document.getElementById('step3').classList.add('hidden');
+  selectedOrder = null;
+  checkStep1();
+}
+
+/* ---- STEP 2: Ordens ---- */
+function renderOrdens(linha) {
+  const elegiveis = ordens.filter(o => o.linha === linha && o.acumulado < o.lote).sort((a,b)=>a.seq-b.seq);
+  const lista = document.getElementById('orders-list');
+  document.getElementById('step2').classList.remove('hidden');
+  document.getElementById('step3').classList.add('hidden');
+  selectedOrder = null;
+  lista.innerHTML = '';
+
+  if (!elegiveis.length) {
+    lista.innerHTML = '<div class="alert alert-success" style="display:block">Todas as ordens desta linha estão concluídas.</div>';
+    return;
+  }
+
+  elegiveis.forEach((op, idx) => {
+    const saldo = op.lote - op.acumulado;
+    const pct   = Math.round(op.acumulado / op.lote * 100);
+    const isProx = idx === 0;
+    const div = document.createElement('div');
+    div.className = 'order-card';
+    div.dataset.op = op.op;
+    div.innerHTML = `
+      <div class="op-row">
+        <div>
+          <div class="op-title">${op.op} <span style="font-weight:400;color:var(--text3)">— ${op.modelo.split(' ')[0]}</span></div>
+          <div class="op-sub">${op.modelo.split(' ').slice(1).join(' ')}</div>
+          <div class="op-meta">Lote: ${op.lote.toLocaleString('pt-BR')} · Produzido: ${op.acumulado.toLocaleString('pt-BR')} (${pct}%) · Saldo: ${saldo.toLocaleString('pt-BR')}</div>
+          <div class="prog-wrap" style="margin-top:6px;width:200px"><div class="prog-fill" style="width:${pct}%;background:${pct>=80?'var(--green-border)':'var(--amber-border)}"></div></div>
+        </div>
+        <span class="badge ${isProx?'badge-green':'badge-purple'}">${isProx?'Próxima':'Alternativa'}</span>
+      </div>`;
+    div.onclick = () => selectOrder(op, idx);
+    lista.appendChild(div);
+  });
+}
+
+function selectOrder(op, idx) {
+  selectedOrder = Object.assign({}, op);
+  selectedOrder._pulo = idx > 0;
+  selectedMotivo = null;
+
+  document.querySelectorAll('.order-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.order-card[data-op="${op.op}"]`).classList.add('selected');
+  document.getElementById('step3').classList.remove('hidden');
+  document.getElementById('qtd').value = '';
+  document.getElementById('motivos-wrap').classList.add('hidden');
+  document.getElementById('alert-desvio').style.display = 'none';
+  document.getElementById('input-prog-wrap').classList.add('hidden');
+  document.getElementById('confirm-box').style.display = 'none';
+  document.getElementById('btn-submit').disabled = true;
+
+  const alertSkip = document.getElementById('alert-skip');
+  if (selectedOrder._pulo) {
+    alertSkip.style.display = 'block';
+    alertSkip.innerHTML = `<strong>⚠ Ordem fora de sequência</strong> — ${op.op} não é a próxima planejada para esta linha. Informe o motivo abaixo.`;
+  } else {
+    alertSkip.style.display = 'none';
+  }
+
+  const saldo = op.lote - op.acumulado;
+  const pct   = Math.round(op.acumulado / op.lote * 100);
+  document.getElementById('meta-box').innerHTML = `
+    <div><div class="meta-val">${META_TURNO.toLocaleString('pt-BR')}</div><div class="meta-lbl">Meta / turno</div></div>
+    <div><div class="meta-val">${saldo.toLocaleString('pt-BR')}</div><div class="meta-lbl">Saldo restante</div></div>
+    <div><div class="meta-val">${pct}%</div><div class="meta-lbl">% concluído</div></div>`;
+}
+
+/* ---- STEP 3: Quantidade ---- */
+function onQtdChange() {
+  const qtd = parseInt(document.getElementById('qtd').value) || 0;
+  if (!selectedOrder) return;
+
+  const saldo  = selectedOrder.lote - selectedOrder.acumulado;
+  const meta   = Math.min(META_TURNO, saldo);
+  const pctMeta = meta > 0 ? qtd / meta : 0;
+  const novoAcum = selectedOrder.acumulado + qtd;
+  const novoPct  = Math.round(novoAcum / selectedOrder.lote * 100);
+
+  // Progress bar
+  document.getElementById('input-prog-wrap').classList.remove('hidden');
+  document.getElementById('pct-label').textContent = novoPct + '%';
+  const bar = document.getElementById('prog-bar');
+  bar.style.width = Math.min(novoPct, 100) + '%';
+  bar.style.background = novoPct >= 80 ? 'var(--green-border)' : novoPct >= 50 ? 'var(--amber-border)' : 'var(--red-border)';
+
+  // Desvio logic
+  const alertDesvio = document.getElementById('alert-desvio');
+  const motivosWrap = document.getElementById('motivos-wrap');
+  const motivoGrid  = document.getElementById('motivo-grid');
+  selectedMotivo = null;
+
+  let motivos = [], alertMsg = '', alertClass = '', precisaMotivo = false;
+
+  if (selectedOrder._pulo) {
+    motivos = MOTIVOS_PULO; alertMsg = '<strong>Ordem fora de sequência</strong> — informe o motivo.'; alertClass = 'alert-skip'; precisaMotivo = true;
+  } else if (qtd > 0 && pctMeta < 0.5) {
+    motivos = MOTIVOS_ABAIXO; alertMsg = `<strong>Produção abaixo de 50% da meta</strong> (${qtd.toLocaleString('pt-BR')} de ${meta.toLocaleString('pt-BR')} peças esperadas). Informe o motivo.`; alertClass = 'alert-danger'; precisaMotivo = true;
+  } else if (pctMeta > 1.1) {
+    motivos = MOTIVOS_ACIMA; alertMsg = `<strong>Produção acima de 110% da meta</strong> (${qtd.toLocaleString('pt-BR')} de ${meta.toLocaleString('pt-BR')} peças esperadas). Informe o motivo.`; alertClass = 'alert-warn'; precisaMotivo = true;
+  }
+
+  if (precisaMotivo) {
+    alertDesvio.className = 'alert ' + alertClass;
+    alertDesvio.style.display = 'block';
+    alertDesvio.innerHTML = alertMsg;
+    motivosWrap.classList.remove('hidden');
+    motivoGrid.innerHTML = '';
+    motivos.forEach(m => {
+      const b = document.createElement('button');
+      b.className = 'motivo-btn'; b.textContent = m;
+      b.onclick = () => { selectedMotivo = m; document.querySelectorAll('.motivo-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.getElementById('outro-wrap').classList.toggle('hidden', m !== 'Outro'); buildConfirm(qtd, true); checkSubmit(); };
+      motivoGrid.appendChild(b);
+    });
+    document.getElementById('outro-wrap').classList.add('hidden');
+  } else {
+    alertDesvio.style.display = 'none';
+    motivosWrap.classList.add('hidden');
+  }
+
+  buildConfirm(qtd, precisaMotivo);
+  checkSubmit();
+}
+
+function buildConfirm(qtd, precisaMotivo) {
+  if (!selectedOrder || !qtd) return;
+  const motivo = selectedMotivo === 'Outro' ? (document.getElementById('outro-texto').value || '—') : (selectedMotivo || '—');
+  const novoAcum = selectedOrder.acumulado + qtd;
+  const novoPct  = Math.round(novoAcum / selectedOrder.lote * 100);
+  const d = document.getElementById('data').value;
+  const t = document.getElementById('turno').value;
+  const l = document.getElementById('linha').value;
+  const box = document.getElementById('confirm-box');
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div class="confirm-title">Confirme antes de enviar</div>
+    <div class="confirm-row"><span class="confirm-label">Data / Turno / Linha</span><span class="confirm-val">${d} · ${t} · ${l}</span></div>
+    <div class="confirm-row"><span class="confirm-label">Ordem</span><span class="confirm-val">${selectedOrder.op}</span></div>
+    <div class="confirm-row"><span class="confirm-label">Modelo</span><span class="confirm-val">${selectedOrder.modelo.split(' ')[0]}</span></div>
+    <div class="confirm-row"><span class="confirm-label">Qtd. produzida no turno</span><span class="confirm-val">${qtd.toLocaleString('pt-BR')} peças</span></div>
+    <div class="confirm-row"><span class="confirm-label">Acumulado após turno</span><span class="confirm-val">${novoAcum.toLocaleString('pt-BR')} / ${selectedOrder.lote.toLocaleString('pt-BR')} (${novoPct}%)</span></div>
+    ${precisaMotivo ? `<div class="confirm-row"><span class="confirm-label">Motivo</span><span class="confirm-val">${motivo}</span></div>` : ''}`;
+}
+
+function checkSubmit() {
+  const qtd = parseInt(document.getElementById('qtd').value) || 0;
+  if (!selectedOrder || qtd <= 0) { document.getElementById('btn-submit').disabled = true; return; }
+  const saldo  = selectedOrder.lote - selectedOrder.acumulado;
+  const meta   = Math.min(META_TURNO, saldo);
+  const pctMeta = meta > 0 ? qtd / meta : 0;
+  const precisaMotivo = selectedOrder._pulo || pctMeta < 0.5 || pctMeta > 1.1;
+  let ok = !precisaMotivo;
+  if (precisaMotivo && selectedMotivo) {
+    ok = selectedMotivo === 'Outro' ? document.getElementById('outro-texto').value.trim().length > 0 : true;
+  }
+  document.getElementById('btn-submit').disabled = !ok;
+}
+
+/* ---- SUBMIT ---- */
+function submitForm() {
+  const qtd    = parseInt(document.getElementById('qtd').value);
+  const motivo = selectedMotivo === 'Outro' ? document.getElementById('outro-texto').value : (selectedMotivo || '');
+  const d = document.getElementById('data').value;
+  const t = document.getElementById('turno').value;
+  const l = document.getElementById('linha').value;
+  const novoAcum = selectedOrder.acumulado + qtd;
+  const novoPct  = Math.round(novoAcum / selectedOrder.lote * 100);
+
+  const idx = ordens.findIndex(o => o.op === selectedOrder.op);
+  if (idx > -1) ordens[idx].acumulado = novoAcum;
+
+  registros.push({
+    data: d, turno: t, linha: l,
+    op: selectedOrder.op,
+    modelo: selectedOrder.modelo.split(' ')[0],
+    qtd_turno: qtd,
+    acumulado: novoAcum,
+    lote: selectedOrder.lote,
+    pct: novoPct,
+    motivo: motivo || '',
+    fora_seq: selectedOrder._pulo ? 'Sim' : 'Não',
+    hora: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})
+  });
+
+  document.getElementById('step3').classList.add('hidden');
+  document.getElementById('step2').classList.add('hidden');
+  document.getElementById('step1').classList.add('hidden');
+  document.getElementById('step-ok').classList.remove('hidden');
+  document.getElementById('ok-summary').innerHTML = `<strong>${l}</strong> · Turno ${t} · <strong>${selectedOrder.op}</strong><br>${qtd.toLocaleString('pt-BR')} peças registradas · Acumulado: ${novoAcum.toLocaleString('pt-BR')} (${novoPct}%)`;
+}
+
+function novoApontamento() {
+  document.getElementById('step-ok').classList.add('hidden');
+  document.getElementById('step1').classList.remove('hidden');
+  document.getElementById('step2').classList.add('hidden');
+  document.getElementById('step3').classList.add('hidden');
+  document.getElementById('alert-skip').style.display = 'none';
+  document.getElementById('orders-list').innerHTML = '';
+  document.getElementById('turno').value = '';
+  document.getElementById('linha').value = '';
+  document.getElementById('data').valueAsDate = new Date();
+  selectedOrder = null; selectedMotivo = null;
+}
+
+function resetOrdem() {
+  document.getElementById('step3').classList.add('hidden');
+  document.getElementById('qtd').value = '';
+  selectedOrder = null; selectedMotivo = null;
+  document.querySelectorAll('.order-card').forEach(c => c.classList.remove('selected'));
+}
+
+/* ---- REGISTROS ---- */
+function renderRegistros() {
+  const cont  = document.getElementById('records-container');
+  const count = document.getElementById('records-count');
+  if (!registros.length) { cont.innerHTML = ''; count.textContent = 'Nenhum registro ainda.'; return; }
+  count.textContent = registros.length + ' registro(s) nesta sessão';
+  cont.innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="records-table">
+      <thead><tr>
+        <th>Hora</th><th>Linha</th><th>Turno</th><th>Ordem</th><th>Modelo</th><th>Qtd</th><th>Acum.</th><th>%</th><th>Motivo</th>
+      </tr></thead>
+      <tbody>${registros.map(r=>`
+        <tr>
+          <td>${r.hora}</td>
+          <td>${r.linha}</td>
+          <td>${r.turno}</td>
+          <td>${r.op}</td>
+          <td>${r.modelo}</td>
+          <td>${r.qtd_turno.toLocaleString('pt-BR')}</td>
+          <td>${r.acumulado.toLocaleString('pt-BR')}</td>
+          <td>${r.pct}%</td>
+          <td style="max-width:140px;word-break:break-word">${r.motivo || '—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+/* ---- EXPORT CSV ---- */
+function exportCSV() {
+  if (!registros.length) return;
+  const headers = ['Data','Turno','Linha','Ordem','Modelo','Qtd_Turno','Acumulado','Lote','Pct','Fora_Seq','Motivo','Hora'];
+  const rows = registros.map(r => [r.data,r.turno,r.linha,r.op,r.modelo,r.qtd_turno,r.acumulado,r.lote,r.pct,r.fora_seq,r.motivo,r.hora].join(';'));
+  const csv  = [headers.join(';'), ...rows].join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a'); a.href=url; a.download='apontamentos_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
